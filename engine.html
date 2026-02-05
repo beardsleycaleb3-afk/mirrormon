@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<body style="background:#000; display:flex; justify-content:center; align-items:center; height:100vh; margin:0; overflow:hidden;">
+  <canvas id="screen" width="160" height="144" style="width:100vw; image-rendering:pixelated;"></canvas>
+  <script>
+    // Sultan 47 Mirror Kernel (60fps Refraction)
+    const ctx = document.getElementById('screen').getContext('2d');
+    const mirror = (density) => (density === "11110000") ? "00001111" : density;
+    
+    function pulse() {
+      ctx.fillStyle = '#9bbc0f'; // Classic Green/Yellow tint
+      ctx.fillRect(0, 0, 160, 144);
+      // Logic for \o00o goes here
+      requestAnimationFrame(pulse);
+    }
+    pulse();
+  </script>
+</body>
+</html>

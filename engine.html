@@ -10,7 +10,17 @@
     function pulse() {
       ctx.fillStyle = '#9bbc0f'; // Classic Green/Yellow tint
       ctx.fillRect(0, 0, 160, 144);
-      // Logic for \o00o goes here
+            // Render Hero from hero.bin logic
+      const hero = ["00011000","00111100","01111110","11111111","11111111","01111110","00111100","00011000"];
+      hero.forEach((row, y) => {
+        for(let x = 0; x < 8; x++) {
+          if(row[x] === "1") {
+            ctx.fillStyle = '#0f380f'; // High density
+            ctx.fillRect(76 + x, 68 + y, 1, 1);
+          }
+        }
+      });
+
       requestAnimationFrame(pulse);
     }
     pulse();

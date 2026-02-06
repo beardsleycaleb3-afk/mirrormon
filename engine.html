@@ -82,6 +82,27 @@
         <div id="btn-a" class="touch-btn">A</div>
     </div>
 </div>
+<script>
+    // Sultan 47 Battle Logic
+    const btnA = document.getElementById('btn-a');
+    const enemyHP = document.getElementById('enemy-hp');
+    let currentHP = 100;
+
+    // When you tap 'A' (Select/Attack)
+    btnA.addEventListener('touchstart', (e) => {
+        e.preventDefault(); // Prevents mobile zoom
+        
+        // Basic Damage Calculation
+        currentHP -= 10; 
+        if(currentHP < 0) currentHP = 0;
+
+        // Update the visual HP bar from your sketch
+        enemyHP.style.width = currentHP + '%';
+
+        // Feedback
+        console.log("Hit! Enemy HP is now: " + currentHP);
+    });
+</script>
 
 </body>
 </html>

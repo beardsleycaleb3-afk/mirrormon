@@ -12,3 +12,7 @@ LV_30: MIDDLE -> ADVANCED
 
 // Stat Scaling
 PER_LEVEL: +2 ATK, +2 DEF, +1 HP, +1 SPD
+[STAT_MAX: 50]
+[LEVEL_MAX: 50]
+[SCALING_ALGORITHM: LINEAR_REFRACTION]
+// Stats cannot exceed Level value to maintain 1:1 parity.

@@ -1,29 +1,57 @@
 <!DOCTYPE html>
-<html>
-<body style="background:#000; display:flex; justify-content:center; align-items:center; height:100vh; margin:0; overflow:hidden;">
-  <canvas id="screen" width="160" height="144" style="width:100vw; image-rendering:pixelated;"></canvas>
-  <script>
-    // Sultan 47 Mirror Kernel (60fps Refraction)
-    const ctx = document.getElementById('screen').getContext('2d');
-    const mirror = (density) => (density === "11110000") ? "00001111" : density;
-    
-    function pulse() {
-      ctx.fillStyle = '#9bbc0f'; // Classic Green/Yellow tint
-      ctx.fillRect(0, 0, 160, 144);
-            // Render Hero from hero.bin logic
-      const hero = ["00011000","00111100","01111110","11111111","11111111","01111110","00111100","00011000"];
-      hero.forEach((row, y) => {
-        for(let x = 0; x < 8; x++) {
-          if(row[x] === "1") {
-            ctx.fillStyle = '#0f380f'; // High density
-            ctx.fillRect(76 + x, 68 + y, 1, 1);
-          }
-        }
-      });
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sultan 47 Engine</title>
+    <style>
+        body { background: #000; color: #fff; font-family: monospace; margin: 0; overflow: hidden; }
+        #screen { width: 100vw; height: 100vh; position: relative; border: 4px solid #333; box-sizing: border-box; }
+        
+        /* Sprite Positions from your Sketch */
+        .sprite { image-rendering: pixelated; position: absolute; }
+        #front-sprite { top: 15%; right: 10%; width: 100px; height: 100px; background: #222; }
+        #back-sprite { bottom: 35%; left: 10%; width: 120px; height: 120px; background: #222; }
 
-      requestAnimationFrame(pulse);
-    }
-    pulse();
-  </script>
+        /* Status Bars */
+        .stats { position: absolute; width: 120px; }
+        .bar { height: 8px; background: #444; border: 1px solid #fff; margin-top: 4px; }
+        .fill { height: 100%; background: #0f0; width: 100%; } /* HP goes down each hit */
+        
+        #enemy-stats { top: 10%; left: 10%; }
+        #player-stats { bottom: 35%; right: 10%; }
+
+        /* The 4-Move Selection Box */
+        #selection-box { 
+            position: absolute; bottom: 0; width: 100%; height: 30%; 
+            background: #111; border-top: 4px solid #fff;
+            display: grid; grid-template-columns: 1fr 1fr; gap: 5px; padding: 10px; box-sizing: border-box;
+        }
+        .move-slot { border: 2px solid #555; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+        .selected { border-color: #fff; background: #333; } /* Selected by D-Pad */
+    </style>
+</head>
+<body>
+    <div id="screen">
+        <div id="enemy-stats" class="stats">
+            <div>NAME: LV 50</div>
+            <div class="bar"><div class="fill" id="enemy-hp"></div></div>
+        </div>
+        <div id="front-sprite" class="sprite"> </div>
+
+        <div id="back-sprite" class="sprite"> </div>
+        <div id="player-stats" class="stats">
+            <div>NAME: LV 3</div>
+            <div class="bar"><div class="fill" id="player-hp"></div></div>
+            <div class="bar" style="background: #00f;"><div class="fill" id="player-xp" style="width: 10%;"></div></div>
+        </div>
+
+        <div id="selection-box">
+            <div id="m1" class="move-slot selected">1: TACKLE</div>
+            <div id="m2" class="move-slot">2: PUNCH</div>
+            <div id="m3" class="move-slot">3: ---</div>
+            <div id="m4" class="move-slot">4: ---</div>
+        </div>
+    </div>
 </body>
 </html>

@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<style>
+body { 
+  margin: 0; 
+  background: #111; 
+  display: flex; 
+  flex-direction: column; 
+  align-items: center; 
+  justify-content: center; 
+  min-height: 100vh; 
+  overflow: hidden; 
+  user-select: none; 
+  font-family: sans-serif; 
+}
+#case { 
+  background: linear-gradient(145deg,#c8c8c8,#a0a0a0); 
+  padding: 12px 12px 40px; 
+  border-radius: 12px; 
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5), inset -4px -4px 12px rgba(0,0,0,0.3); 
+  margin: 8px; 
+  max-width: 100vw; 
+}
+#screen { 
+  border: 3px solid #333; 
+  background: #111; 
+  border-radius: 8px; 
+  overflow: hidden; 
+  display: block; 
+}
+#controls { 
+  margin-top: 12px; 
+  width: 300px; 
+  height: 120px; 
+  position: relative; 
+}
+.btn, .dpad { 
+  position: absolute; 
+  background: linear-gradient(145deg,#555,#333); 
+  border: 2px solid #222; 
+  color: #ddd; 
+  border-radius: 50%; 
+  width: 38px; 
+  height: 38px; 
+  font-size: 13px; 
+  text-align: center; 
+  line-height: 34px; 
+  box-shadow: 0 3px 0 #111, inset 0 1px 0 rgba(255,255,255,0.1); 
+  touch-action: manipulation; 
+  cursor: pointer; 
+}
+.btn:active, .dpad:active { 
+  transform: translateY(3px); 
+  box-shadow: 0 1px 0 #111; 
+}
+#up { top: -2px; left: 42px; border-radius: 6px 6px 2px 2px; height: 34px; line-height: 30px; }
+#down { top: 68px; left: 42px; border-radius: 2px 2px 6px 6px; height: 34px; line-height: 30px; }
+#left { top: 33px; left: 3px; border-radius: 6px 2px 2px 6px; width: 34px; }
+#right { top: 33px; left: 77px; border-radius: 2px 6px 6px 2px; width: 34px; }
+#a { top: 18px; right: 3px; background: linear-gradient(145deg,#d44,#b33); color: #fff; box-shadow: 0 3px 0 #822; }
+#b { top: 58px; right: 48px; background: linear-gradient(145deg,#d44,#b33); color: #fff; box-shadow: 0 3px 0 #822; }
+#st { 
+  bottom: 3px; 
+  left: 98px; 
+  width: 64px; 
+  height: 22px; 
+  border-radius: 12px; 
+  line-height: 22px; 
+  font-size: 10px; 
+  background: linear-gradient(145deg,#666,#444); 
+  color: #ddd; 
+  border: 2px solid #222; 
+  box-shadow: 0 3px 0 #222; 
+  position: absolute; 
+}
+</style>
+</head>
+<body>
+<div id="case">
+  <div id="screen">
+    <canvas id="c"></canvas>
+  </div>
+  <div id="controls">
+    <div id="up" class="dpad">▲</div>
+    <div id="down" class="dpad">▼</div>
+    <div id="left" class="dpad">◄</div>
+    <div id="right" class="dpad">►</div>
+    <button id="a" class="btn">A</button>
+    <button id="b" class="btn">B</button>
+    <div id="st">START</div>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+
+function resizeCanvas() {
+  canvas.width = 320;
+  canvas.height = 288;
+  canvas.style.width = '320px';
+  canvas.style.height = '288px';
+  canvas.style.imageRendering = 'pixelated';
+  ctx.imageSmoothingEnabled = false;
+}
+
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+const W = 320, H = 288, TW = 16;
+let state = 'INTRO', text = '', introStep = 0;
+let p = {x: 4, y: 4, dir: 0, step: 0, hp: 20, maxHp: 20};
+let keys = {};
+let curMap, mapSeed = Date.now();
+
+const MAPS = {
+  ROOM: {
+    w: 8, h: 8, 
+    d: [1,1,1,1,1,1,1,1, 1,0,0,1,0,0,0,1, 1,0,0,0,0,0,0,1, 1,0,0,0,0,0,0,1, 1,0,0,0,0,0,0,1, 1,1,1,0,0,1,1,1, 1,1,1,1,1,1,1,1],
+    exits: [{x: 3, y: 1, to: 'TOWN', tx: 10, ty: 4}]
+  },
+  TOWN: {w: 20, h: 16, d: [], exits: [{x: 4, y: 6, to: 'ROOM', tx: 3, ty: 2}, {x: 14, y: 6, to: 'LAB', tx: 4, ty: 7}]},
+  LAB: {w: 10, h: 10, d: [], exits: [{x: 4, y: 7, to: 'TOWN', tx: 14, ty: 7}]}
+};
+
+curMap = MAPS.ROOM;
+
+function initTown() {
+  let d = [];
+  for(let i = 0; i < 320; i++) {
+    let edge = i < 20 || i > 300 || i % 20 == 0 || i % 20 == 19;
+    d[i] = edge ? 1 : Math.random() < 0.12 ? 4 : 0;
+  }
+  MAPS.TOWN.d = d;
+}
+
+function initLab() {
+  let d = [];
+  for(let i = 0; i < 100; i++) {
+    let edge = i < 10 || i > 89 || i % 10 == 0 || i % 10 == 9;
+    d[i] = edge ? 1 : Math.random() < 0.25 ? 5 : 0;
+  }
+  MAPS.LAB.d = d;
+}
+
+initTown();
+initLab();
+
+function addTouchControls() {
+  ['up','down','left','right','a','b','st'].forEach(id => {
+    const el = document.getElementById(id);
+    const key = id[0];
+    let timeout;
+    el.addEventListener('touchstart', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      keys[key] = true;
+      handleKey(key);
+      timeout = setTimeout(() => keys[key] = false, 150);
+    }, true);
+    el.addEventListener('touchend', e => {
+      e.preventDefault();
+      clearTimeout(timeout);
+      keys[key] = false;
+    }, true);
+    el.addEventListener('touchcancel', e => {
+      e.preventDefault();
+      clearTimeout(timeout);
+      keys[key] = false;
+    }, true);
+  });
+  document.addEventListener('touchstart', () => {}, true);
+}
+
+function handleKey(key) {
+  if(key === 'a' && state === 'INTRO') nextIntro();
+  if(key === 'a' && state === 'LAB') checkLab();
+  if(key === 'b' && state === 'BATTLE') useItem();
+}
+
+let rafId;
+function loop() {
+  rafId = requestAnimationFrame(loop);
+  update();
+  draw();
+}
+
+function update() {
+  if(state === 'INTRO') return;
+  if(p.step > 0) {
+    p.step -= 0.12;
+    if(p.step <= 0) {
+      p.step = 0;
+      if(p.dir === 0) p.y--;
+      if(p.dir === 1) p.y++;
+      if(p.dir === 2) p.x--;
+      if(p.dir === 3) p.x++;
+      checkTil

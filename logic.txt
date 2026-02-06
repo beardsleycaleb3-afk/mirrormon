@@ -1,5 +1,0 @@
-\o0o (Sequence)
-0o- (Text Pointer)
-00000001 (Start Prompt)
-00000011 (Move 1: Pulse)
-00000111 (Move 2: Strike)

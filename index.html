@@ -1,101 +1,330 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Mirrormon: 14 Town Demo</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <style>
-        body { background: #000; color: #f00; font-family: sans-serif; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
-        
-        /* THE MAP GRID */
-        #game-board { 
-            display: grid; grid-template-columns: repeat(8, 40px); 
-            grid-template-rows: repeat(8, 40px);
-            border: 4px solid #f00; background: #000;
-        }
-
-        .tile { width: 40px; height: 40px; box-sizing: border-box; }
-        
-        /* YOUR CONTENT GROUPS */
-        .wall { background: #f00; border: 1px solid #000; }        /* o0 */
-        .path { background: #000; }                                /* 0o */
-        .tree { background: #4b3621; border-radius: 50% 50% 0 0; } /* o4 */
-        .prof { background: #fff; border: 4px solid #f00; }        /* o6o */
-        .tiger { background: cyan; box-shadow: 0 0 15px cyan; border-radius: 50%; } /* o3o */
-
-        #controls { margin-top: 20px; display: grid; grid-template-columns: repeat(3, 60px); gap: 10px; }
-        button { background: #f00; color: #000; border: none; padding: 15px; font-weight: bold; border-radius: 5px; }
-        #message { margin-top: 15px; height: 40px; text-align: center; font-size: 14px; padding: 0 10px; }
-    </style>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<style>
+    /* GBA SCREEN RATIO & STYLING */
+    body { background: #202020; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; font-family: 'Courier New', monospace; overflow: hidden; user-select: none; -webkit-user-select: none; }
+    #case { background: #c0c0c0; padding: 20px 20px 60px 20px; border-radius: 10px 10px 40px 10px; box-shadow: inset -5px -5px 20px rgba(0,0,0,0.5); }
+    #screen-border { background: #505050; padding: 10px; border-radius: 10px 10px 40px 10px; }
+    canvas { background: #000; image-rendering: pixelated; width: 320px; height: 240px; border: 2px solid #333; }
+    
+    /* GBA HARDWARE CONTROLS */
+    #controls { margin-top: 20px; width: 340px; position: relative; height: 160px; }
+    .btn { position: absolute; background: #333; border: 2px solid #555; color: #ccc; border-radius: 50%; width: 50px; height: 50px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 0 #111; active { transform: translateY(4px); box-shadow: 0 0 0 #111; } }
+    .dpad { position: absolute; background: #333; width: 40px; height: 40px; border: 1px solid #000; }
+    #up { top: 10px; left: 50px; border-radius: 5px 5px 0 0; }
+    #down { top: 90px; left: 50px; border-radius: 0 0 5px 5px; }
+    #left { top: 50px; left: 10px; border-radius: 5px 0 0 5px; }
+    #right { top: 50px; left: 90px; border-radius: 0 5px 5px 0; }
+    #center { top: 50px; left: 50px; background: #222; } /* Pivot */
+    
+    #a { top: 40px; right: 10px; background: #a22; border-color: #600; color: #fff; }
+    #b { top: 60px; right: 70px; background: #a22; border-color: #600; color: #fff; }
+    #st { position: absolute; bottom: 10px; left: 130px; width: 80px; height: 25px; border-radius: 20px; background: #555; border: 2px solid #222; color: #fff; font-size: 10px; text-align: center; line-height: 25px; }
+</style>
 </head>
 <body>
 
-    <div id="message">PROF. CEDAR: Welcome to 14 Town. Use the buttons to find the Fire-Tiger.</div>
-
-    <div id="game-board" id="board"></div>
-
+<div id="case">
+    <div id="screen-border"><canvas id="gba"></canvas></div>
     <div id="controls">
-        <button style="grid-column: 2" onclick="move(0, -1)">UP</button>
-        <button onclick="move(-1, 0)">LEFT</button>
-        <button onclick="interact()">ACT</button>
-        <button onclick="move(1, 0)">RIGHT</button>
-        <button style="grid-column: 2" onclick="move(0, 1)">DOWN</button>
+        <div id="up" class="dpad" ontouchstart="k('u',1)" ontouchend="k('u',0)" onmousedown="k('u',1)" onmouseup="k('u',0)"></div>
+        <div id="down" class="dpad" ontouchstart="k('d',1)" ontouchend="k('d',0)" onmousedown="k('d',1)" onmouseup="k('d',0)"></div>
+        <div id="left" class="dpad" ontouchstart="k('l',1)" ontouchend="k('l',0)" onmousedown="k('l',1)" onmouseup="k('l',0)"></div>
+        <div id="right" class="dpad" ontouchstart="k('r',1)" ontouchend="k('r',0)" onmousedown="k('r',1)" onmouseup="k('r',0)"></div>
+        <div id="center" class="dpad"></div>
+        <button id="b" class="btn" ontouchstart="k('b',1)" ontouchend="k('b',0)" onmousedown="k('b',1)" onmouseup="k('b',0)">B</button>
+        <button id="a" class="btn" ontouchstart="k('a',1)" ontouchend="k('a',0)" onmousedown="k('a',1)" onmouseup="k('a',0)">A</button>
+        <div id="st" onmousedown="k('st',1)">START</div>
     </div>
+</div>
 
 <script>
-    // THE MAP DATA (Your short strands translated to a grid)
-    const map = [
-        ['wall','wall','wall','wall','wall','wall','wall','wall'],
-        ['wall','path','path','path','path','path','path','wall'],
-        ['wall','path','tree','tree','path','prof','path','wall'],
-        ['wall','path','path','path','path','path','path','wall'],
-        ['wall','path','tiger','path','path','path','path','wall'],
-        ['wall','path','path','path','path','path','path','wall'],
-        ['wall','path','path','path','path','path','path','wall'],
-        ['wall','wall','wall','wall','wall','wall','wall','wall']
-    ];
+/* --- MIRRORMON KERNEL: FIRE-RED SIMULATION --- */
+const c = document.getElementById('gba').getContext('2d');
+const W = 320, H = 240; // Scaled GBA Resolution
+c.canvas.width = W; c.canvas.height = H;
 
-    let playerPos = { x: 1, y: 1 };
+// --- ASSET GENERATOR (Procedural Pixel Art) ---
+// We create sprites at runtime to avoid external files
+const S = {
+    hero: gS([
+        "......RR......",
+        "....RRRRRR....",
+        "....RRRRRR....",
+        "....HHhhHH....",
+        "....HHHHHH....",
+        "...RRRRRRRR...",
+        "..RRRRRRRRRR..",
+        "..BBBBBBBBBB..",
+        "..BBBBBBBBBB..",
+        "..LL..LL..LL.."
+    ], {R:"#f00", H:"#fc9", h:"#000", B:"#222", L:"#333"}),
+    
+    cedar: gS([
+        "......wwww......",
+        "....wwwwwwww....",
+        "....HHhhHHww....",
+        "....HHHHHH......",
+        "....LLLLLL......",
+        "...LLLLLLLL.....",
+        "..wwwwwwwwww....",
+        "..wwwwwwwwww....",
+        "..LL......LL...."
+    ], {w:"#fff", H:"#fc9", h:"#000", L:"#532"}),
 
-    function draw() {
-        const board = document.getElementById('game-board');
-        board.innerHTML = '';
-        for (let y = 0; y < 8; y++) {
-            for (let x = 0; x < 8; x++) {
-                const div = document.createElement('div');
-                div.className = 'tile ' + map[y][x];
-                if (x === playerPos.x && y === playerPos.y) {
-                    div.style.background = 'white'; // This is YOU
-                    div.style.border = '2px solid cyan';
-                }
-                board.appendChild(div);
-            }
+    // THE STARTERS
+    bobosire: gS(["...GG...","..GGGG..","..GGGG..","..gGGg.."], {G:"#8f8", g:"#050"}), // Plant
+    harmanda: gS(["...RR...","..RRRR..","..RRRR..","..fRRf.."], {R:"#f88", f:"#f00"}), // Fire
+    squartom: gS(["...BB...","..BBBB..","..BBBB..","..bBBb.."], {B:"#88f", b:"#00f"}), // Water
+    ball: gS(["...RR...","..RRRR..","..WWWW..","...WW..."], {R:"#f00", W:"#fff"})
+};
+
+function gS(map, pal) {
+    // Convert ASCII map to CanvasImage
+    let cvs = document.createElement('canvas'); cvs.width=16; cvs.height=16;
+    let x=cvs.getContext('2d');
+    map.forEach((row, i) => {
+        for(let j=0; j<row.length; j++) {
+            if(pal[row[j]]) { x.fillStyle = pal[row[j]]; x.fillRect(j,i,1,1); }
         }
-    }
+    });
+    return cvs;
+}
 
-    function move(dx, dy) {
-        let newX = playerPos.x + dx;
-        let newY = playerPos.y + dy;
-        if (map[newY][newX] !== 'wall') {
-            playerPos.x = newX;
-            playerPos.y = newY;
+// --- GAME STATE & MAPS ---
+let state = "INTRO"; // INTRO, ROOM, TOWN, LAB, BATTLE
+let text = "";
+let timer = 0;
+let cam = {x:0, y:0};
+let p = {x:4, y:4, dir:0, spr:S.hero, step:0}; // Player
+
+// THE MAPS (1 = Wall, 0 = Floor, 2 = Door, 3 = Stairs, 4 = Grass, 5 = Desk, 8 = Lab Table)
+const MAPS = {
+    ROOM: {
+        w: 8, h: 8,
+        d: [1,1,1,1,1,1,1,1,
+            1,5,5,1,3,1,5,1,
+            1,0,0,1,0,0,0,1,
+            1,0,0,0,0,0,0,1,
+            1,0,0,0,0,0,0,1,
+            1,1,1,0,0,1,1,1,
+            1,1,1,1,1,1,1,1],
+        col: "#aab",
+        exits: [{x:3, y:1, to:"TOWN", tx:10, ty:4}] // Stairs -> Town
+    },
+    TOWN: {
+        w: 20, h: 16,
+        d: [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+            1,4,4,4,4,4,4,1,0,0,0,0,0,1,4,4,4,4,4,1,
+            1,4,4,4,4,4,4,1,0,0,0,0,0,1,4,4,4,4,4,1,
+            1,1,1,1,1,1,1,1,0,0,0,0,0,1,1,1,1,1,1,1,
+            1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+            1,0,0,1,1,1,0,0,0,0,0,0,0,1,1,1,0,0,0,1,
+            1,0,0,1,2,1,0,0,0,0,0,0,0,1,8,1,0,0,0,1, // 8 is Lab Door
+            1,0,0,1,1,1,0,0,0,0,0,0,0,1,1,1,0,0,0,1,
+            1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+            1,4,4,4,4,4,4,4,0,0,0,4,4,4,4,4,4,4,4,1,
+            1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+        col: "#4a4",
+        exits: [{x:4, y:6, to:"ROOM", tx:3, ty:2}, {x:14, y:6, to:"LAB", tx:4, ty:7}]
+    },
+    LAB: {
+        w: 10, h: 10,
+        d: [1,1,1,1,1,1,1,1,1,1,
+            1,5,5,5,5,5,5,5,5,1,
+            1,0,0,0,0,0,0,0,0,1,
+            1,0,0,8,8,8,0,0,0,1, // Table with pokeballs
+            1,0,0,0,0,0,0,0,0,1,
+            1,0,0,0,5,0,0,0,0,1,
+            1,1,1,1,0,0,1,1,1,1,
+            1,1,1,1,2,2,1,1,1,1],
+        col: "#ddc",
+        exits: [{x:4, y:7, to:"TOWN", tx:14, ty:7}, {x:5, y:7, to:"TOWN", tx:14, ty:7}]
+    }
+};
+
+let curMap = MAPS.ROOM;
+
+// --- INPUT HANDLER ---
+let keys = {u:0, d:0, l:0, r:0, a:0, b:0};
+function k(key, val) { 
+    keys[key] = val; 
+    if(val && key === 'a' && state === "INTRO") nextIntro();
+    if(val && key === 'a' && state === "LAB") checkLab();
+}
+
+// --- LOGIC LOOP (60 FPS) ---
+function loop() {
+    update();
+    draw();
+    requestAnimationFrame(loop);
+}
+
+function update() {
+    if(state === "INTRO") return;
+
+    // MOVEMENT (Grid Based)
+    if(p.step > 0) {
+        // Smooth walk interpolation
+        let spd = 4; // pixels per frame
+        if(p.dir == 0) p.yOff = -spd;
+        if(p.dir == 1) p.yOff = spd;
+        if(p.dir == 2) p.xOff = -spd;
+        if(p.dir == 3) p.xOff = spd;
+        p.step -= 0.1;
+        if(p.step <= 0) { 
+            // Snap to grid
+            if(p.dir == 0) p.y--; if(p.dir == 1) p.y++;
+            if(p.dir == 2) p.x--; if(p.dir == 3) p.x++;
+            p.xOff = 0; p.yOff = 0;
             checkTile();
         }
-        draw();
+    } else {
+        // Input Check
+        if(keys.u) { p.dir = 0; tryMove(0, -1); }
+        else if(keys.d) { p.dir = 1; tryMove(0, 1); }
+        else if(keys.l) { p.dir = 2; tryMove(-1, 0); }
+        else if(keys.r) { p.dir = 3; tryMove(1, 0); }
+    }
+}
+
+function tryMove(dx, dy) {
+    let tx = p.x + dx;
+    let ty = p.y + dy;
+    let tile = curMap.d[ty * curMap.w + tx];
+    
+    // Collision (1 is wall, 5 is desk, 8 is table)
+    if(tile !== 1 && tile !== 5 && tile !== 8) {
+        p.step = 1; // Start movement animation
+    }
+}
+
+function checkTile() {
+    let tile = curMap.d[p.y * curMap.w + p.x];
+    // Exits
+    curMap.exits.forEach(e => {
+        if(p.x === e.x && p.y === e.y) {
+            state = "TRANSITION";
+            setTimeout(()=>{
+                curMap = MAPS[e.to];
+                p.x = e.tx; p.y = e.ty;
+                state = e.to;
+            }, 500);
+        }
+    });
+}
+
+function checkLab() {
+    // Check if facing table (8)
+    // Simple distance check for interaction
+    let tx = p.x, ty = p.y;
+    if(p.dir==0) ty--; if(p.dir==1) ty++;
+    if(p.dir==2) tx--; if(p.dir==3) tx++;
+    
+    let tile = curMap.d[ty * curMap.w + tx];
+    if(tile === 8) {
+        text = "CHOOSE: 1.BOBOSIRE 2.HARMANDA 3.SQUARTOM";
+    }
+}
+
+// --- RENDER LOOP ---
+function draw() {
+    // CLEAR
+    c.fillStyle = "#000"; c.fillRect(0,0,W,H);
+
+    if(state === "INTRO") {
+        c.fillStyle = "#fff";
+        c.font = "20px monospace";
+        c.fillText("MIRRORMON: ORIGIN", 60, 100);
+        c.font = "12px monospace";
+        c.fillText("PRESS 'A' TO START", 100, 150);
+        c.drawImage(S.cedar, 140, 50, 40, 40); // Prof Cedar
+        if(text) drawTextBox(text);
+        return;
     }
 
-    function checkTile() {
-        const tile = map[playerPos.y][playerPos.x];
-        const msg = document.getElementById('message');
-        if (tile === 'tiger') msg.innerText = "You found the FIRE-TIGER! 14:4 Sphere Syncing...";
-        else if (tile === 'prof') msg.innerText = "CEDAR: Your code has broken the Shannon limit!";
-        else msg.innerText = "Exploring 14 Town...";
+    // DRAW MAP
+    let tw = 32; // Tile Width (Zoomed in)
+    let vx = (p.x * tw) - (W/2) + (tw/2); // Camera centering
+    let vy = (p.y * tw) - (H/2) + (tw/2);
+    
+    // Smooth scroll adjustment
+    if(p.step > 0) {
+        if(p.dir==0) vy -= (1-p.step)*tw;
+        if(p.dir==1) vy += (1-p.step)*tw;
+        if(p.dir==2) vx -= (1-p.step)*tw;
+        if(p.dir==3) vx += (1-p.step)*tw;
     }
 
-    function interact() {
-        alert("Action Triggered: Shifting Strand Logic.");
+    for(let y=0; y<curMap.h; y++) {
+        for(let x=0; x<curMap.w; x++) {
+            let t = curMap.d[y*curMap.w + x];
+            let dx = x*tw - vx;
+            let dy = y*tw - vy;
+            
+            // Ground
+            c.fillStyle = curMap.col; c.fillRect(dx, dy, tw, tw);
+            
+            // Objects
+            if(t === 1) { c.fillStyle = "#333"; c.fillRect(dx, dy, tw, tw); c.strokeStyle="#555"; c.strokeRect(dx,dy,tw,tw); } // Wall
+            if(t === 3) { c.fillStyle = "#000"; c.fillText("|||", dx+5, dy+20); } // Stairs
+            if(t === 4) { c.fillStyle = "#282"; c.fillRect(dx+2, dy+2, tw-4, tw-4); } // Grass
+            if(t === 5) { c.fillStyle = "#852"; c.fillRect(dx+2, dy+5, tw-4, tw-10); } // Desk
+            if(t === 8) { 
+                c.fillStyle = "#ccc"; c.fillRect(dx, dy, tw, tw); 
+                c.drawImage(S.ball, dx+2, dy+2, 12, 12);
+                c.drawImage(S.ball, dx+16, dy+2, 12, 12);
+            } // Lab Table
+        }
     }
 
-    draw();
+    // DRAW PLAYER
+    let px_scr = (p.x * tw) - vx;
+    let py_scr = (p.y * tw) - vy;
+    
+    if(p.step > 0) {
+        if(p.dir==0) py_scr -= (1-p.step)*tw;
+        if(p.dir==1) py_scr += (1-p.step)*tw;
+        if(p.dir==2) px_scr -= (1-p.step)*tw;
+        if(p.dir==3) px_scr += (1-p.step)*tw;
+    }
+    
+    c.drawImage(S.hero, 0, 0, 16, 16, px_scr, py_scr, tw, tw);
+    
+    // TEXT BOX LAYER
+    if(text) drawTextBox(text);
+}
+
+function drawTextBox(msg) {
+    c.fillStyle = "#222"; c.fillRect(10, H-60, W-20, 50);
+    c.border = "2px solid #fff"; c.strokeStyle="#fff"; c.strokeRect(10, H-60, W-20, 50);
+    c.fillStyle = "#fff"; c.font = "12px monospace";
+    c.fillText(msg, 20, H-30);
+}
+
+// --- INTRO SEQUENCE ---
+let introStep = 0;
+function nextIntro() {
+    introStep++;
+    if(introStep === 1) text = "HELLO THERE! WELCOME TO THE WORLD OF MIRRORMON!";
+    if(introStep === 2) text = "MY NAME IS CEDAR. PEOPLE CALL ME THE PROF.";
+    if(introStep === 3) text = "THIS WORLD IS INHABITED BY CREATURES CALLED...";
+    if(introStep === 4) {
+        text = "MIRRORMON!";
+        // Show ball throw visual?
+    }
+    if(introStep === 5) text = "ARE YOU READY? YOUR JOURNEY BEGINS NOW!";
+    if(introStep === 6) {
+        state = "ROOM";
+        text = "";
+    }
+}
+
+// START
+loop();
+
 </script>
 </body>
 </html>

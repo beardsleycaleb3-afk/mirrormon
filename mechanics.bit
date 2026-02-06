@@ -1,0 +1,14 @@
+[LEVEL_CAP: 50]
+[START_LEVEL: 3]
+
+// Move Unlocks
+LV_03: [Slot 1: Normal] [Slot 2: Status]
+LV_10: [Slot 3: Elemental]
+LV_20: [Slot 4: Advanced]
+
+// Evolution Triggers
+LV_15: YOUNG -> MIDDLE
+LV_30: MIDDLE -> ADVANCED
+
+// Stat Scaling
+PER_LEVEL: +2 ATK, +2 DEF, +1 HP, +1 SPD

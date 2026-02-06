@@ -3,36 +3,45 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Sultan 47 Engine</title>
+    <title>Sultan 47 - Town 1</title>
     <style>
-        body { background: #1a1a1a; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
-        #console { width: 95vw; height: 95vh; background: #333; border: 8px solid #222; border-radius: 40px; display: flex; flex-direction: column; padding: 15px; box-sizing: border-box; }
+        /* THE PHYSICAL CONSOLE BODY */
+        body { background: #1a1a1a; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: monospace; overflow: hidden; }
+        #handheld { width: 95vw; height: 95vh; background: #333; border-radius: 40px; border: 8px solid #222; display: flex; flex-direction: column; padding: 15px; box-sizing: border-box; }
         
         /* THE GAME SCREEN */
-        #viewport { flex: 0.6; background: #000; border: 10px solid #111; border-radius: 10px; position: relative; display: grid; grid-template-columns: repeat(16, 1fr); overflow: hidden; }
-        .tile { width: 100%; height: 100%; background-size: cover; }
+        #screen { flex: 0.6; background: #000; border: 12px solid #111; border-radius: 10px; position: relative; overflow: hidden; display: grid; grid-template-columns: repeat(16, 1fr); }
+        .tile { width: 100%; height: 100%; }
         
-        /* ASSET STYLES FROM YOUR SKETCH */
-        .wall { background: #822; } /* Red Brick/Tile */
-        .path { background-image: url('1000034496.png'); } /* Your Zigzag Texture */
-        .goon { background: #2f2; border-radius: 50%; scale: 0.4; } /* Green Battle Dot */
-        .house { background: #cc2; } /* Yellow House */
-        .heal { background: #22a; } /* Blue Healing Post */
-        
-        #player { position: absolute; width: 6.25%; height: 6.25%; background: cyan; border-radius: 50%; z-index: 10; display: flex; align-items: center; justify-content: center; transition: 0.1s; font-size: 10px; }
+        /* ART STYLES */
+        .wall { background: #822; } /* Red Brick */
+        .path { background-image: url('1000034496.png'); background-size: cover; background-color: #222; } /* Zigzag */
+        .house { background: #cc2; border: 1px solid #990; } /* Yellow House */
+        .heal { background: #22a; } /* Blue Post */
+        .goon { background: #2f2; border-radius: 50%; scale: 0.4; box-shadow: 0 0 10px #0f0; } /* Green Battle Dot */
+
+        /* THE SULTAN SPRITE (CSS-BASED) */
+        #player { 
+            position: absolute; width: 6.25%; height: 6.25%; 
+            z-index: 100; transition: all 0.1s linear;
+            display: flex; justify-content: center; align-items: center;
+        }
+        #player::before { content: ""; position: absolute; width: 70%; height: 90%; background: cyan; border: 1px solid #fff; border-radius: 2px; }
+        #player::after { content: ""; position: absolute; width: 30%; height: 20%; background: #000; top: 20%; box-shadow: 0 0 5px cyan; }
 
         /* THE CONTROLS */
         #controls { flex: 0.4; display: flex; justify-content: space-around; align-items: center; }
-        .dpad { display: grid; grid-template-columns: repeat(3, 55px); gap: 5px; }
-        .btn { background: #222; border: 3px solid #666; color: #fff; width: 55px; height: 55px; display: flex; align-items: center; justify-content: center; font-weight: bold; border-radius: 8px; }
-        .circle-btn { width: 70px; height: 70px; border-radius: 50%; background: #a22; }
+        .dpad { display: grid; grid-template-columns: repeat(3, 55px); grid-template-rows: repeat(3, 55px); gap: 5px; }
+        .btn { background: #222; border: 3px solid #666; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; border-radius: 10px; }
+        .action-btns { display: flex; gap: 20px; }
+        .circle { width: 70px; height: 70px; border-radius: 50%; background: #a22; border: 4px solid #611; }
     </style>
 </head>
 <body>
 
-<div id="console">
-    <div id="viewport">
-        <div id="player">👤</div>
+<div id="handheld">
+    <div id="screen" id="viewport">
+        <div id="player"></div>
         </div>
 
     <div id="controls">
@@ -41,9 +50,9 @@
             <div class="btn" onclick="move(-1,0)">◀</div><div style="background:#444"></div><div class="btn" onclick="move(1,0)">▶</div>
             <div></div><div class="btn" onclick="move(0,1)">▼</div><div></div>
         </div>
-        <div style="display:flex; gap:15px;">
-            <div class="btn circle-btn">B</div>
-            <div class="btn circle-btn">A</div>
+        <div class="action-btns">
+            <div class="btn circle" onclick="action('B')">B</div>
+            <div class="btn circle" onclick="action('A')">A</div>
         </div>
     </div>
 </div>
@@ -51,41 +60,47 @@
 <script src="town1map.js"></script>
 
 <script>
-    // THE ENGINE LOGIC
-    let pX = 4, pY = 0; // Starting at 'Start'
-    const viewport = document.getElementById('viewport');
+    let pX = 4, pY = 0; // Starting position
+    const screen = document.getElementById('screen');
     const hero = document.getElementById('player');
 
-    function buildWorld() {
-        // This looks at town1Data from your town1map.js file
+    function buildMap() {
+        // Uses town1Data from your separate town1map.js file
         town1Data.forEach(row => {
-            row.forEach(type => {
+            row.forEach(val => {
                 const tile = document.createElement('div');
                 tile.className = 'tile';
-                if(type === 1) tile.classList.add('wall');
-                if(type === 0) tile.classList.add('path');
-                if(type === 3) tile.classList.add('house');
-                if(type === 6) tile.classList.add('heal');
-                if(type === 7) tile.classList.add('goon');
-                viewport.appendChild(tile);
+                if(val === 1) tile.classList.add('wall');
+                if(val === 0) tile.classList.add('path');
+                if(val === 3 || val === 4) tile.classList.add('house');
+                if(val === 6) tile.classList.add('heal');
+                if(val === 7) tile.classList.add('goon');
+                screen.appendChild(tile);
             });
         });
+        updateHero();
+    }
+
+    function updateHero() {
+        hero.style.left = (pX * 6.25) + "%";
+        hero.style.top = (pY * 6.25) + "%";
     }
 
     function move(dx, dy) {
         let nX = pX + dx, nY = pY + dy;
-        // Collision logic: Don't walk through walls (1)
+        // Check collision against your town1map.js data
         if(town1Data[nY] && town1Data[nY][nX] !== 1) {
             pX = nX; pY = nY;
-            hero.style.left = (pX * 6.25) + "%";
-            hero.style.top = (pY * 6.25) + "%";
-            
-            // Goon Battle Logic
-            if(town1Data[pY][pX] === 7) alert("SULTAN! A Goon blocks your path!");
+            updateHero();
+            if(town1Data[pY][pX] === 7) alert("SULTAN: Decoupled Entity detected!");
         }
     }
 
-    window.onload = buildWorld;
+    function action(type) {
+        console.log("Button " + type + " pressed.");
+    }
+
+    window.onload = buildMap;
 </script>
 </body>
 </html>

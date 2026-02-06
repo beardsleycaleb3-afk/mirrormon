@@ -5,72 +5,87 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Sultan 47 Engine</title>
     <style>
-        body { background: #000; color: #fff; font-family: monospace; margin: 0; overflow: hidden; touch-action: manipulation; }
-        #screen { width: 100vw; height: 60vh; position: relative; border-bottom: 2px solid #fff; background: #222; overflow: hidden; }
-        #player-sprite { width: 20px; height: 20px; background: cyan; position: absolute; transition: all 0.1s; }
+        body { background: #1a1a1a; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+        #console { width: 95vw; height: 95vh; background: #333; border: 8px solid #222; border-radius: 40px; display: flex; flex-direction: column; padding: 15px; box-sizing: border-box; }
         
-        /* Controller Styling */
-        #controller { height: 40vh; width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 20px; box-sizing: border-box; background: #111; }
-        .dpad-grid { display: grid; grid-template-columns: 50px 50px 50px; grid-template-rows: 50px 50px 50px; }
-        .btn { background: #333; border: 2px solid #fff; display: flex; align-items: center; justify-content: center; font-weight: bold; }
-        .round { border-radius: 50%; width: 60px; height: 60px; }
+        /* THE GAME SCREEN */
+        #viewport { flex: 0.6; background: #000; border: 10px solid #111; border-radius: 10px; position: relative; display: grid; grid-template-columns: repeat(16, 1fr); overflow: hidden; }
+        .tile { width: 100%; height: 100%; background-size: cover; }
+        
+        /* ASSET STYLES FROM YOUR SKETCH */
+        .wall { background: #822; } /* Red Brick/Tile */
+        .path { background-image: url('1000034496.png'); } /* Your Zigzag Texture */
+        .goon { background: #2f2; border-radius: 50%; scale: 0.4; } /* Green Battle Dot */
+        .house { background: #cc2; } /* Yellow House */
+        .heal { background: #22a; } /* Blue Healing Post */
+        
+        #player { position: absolute; width: 6.25%; height: 6.25%; background: cyan; border-radius: 50%; z-index: 10; display: flex; align-items: center; justify-content: center; transition: 0.1s; font-size: 10px; }
+
+        /* THE CONTROLS */
+        #controls { flex: 0.4; display: flex; justify-content: space-around; align-items: center; }
+        .dpad { display: grid; grid-template-columns: repeat(3, 55px); gap: 5px; }
+        .btn { background: #222; border: 3px solid #666; color: #fff; width: 55px; height: 55px; display: flex; align-items: center; justify-content: center; font-weight: bold; border-radius: 8px; }
+        .circle-btn { width: 70px; height: 70px; border-radius: 50%; background: #a22; }
     </style>
 </head>
 <body>
 
-    <div id="screen">
-        <div id="player-sprite"></div>
-    </div>
-
-    <div id="controller">
-        <div class="dpad-grid">
-            <div></div><div class="btn" ontouchstart="move('up')">▲</div><div></div>
-            <div class="btn" ontouchstart="move('left')">◀</div><div></div><div class="btn" ontouchstart="move('right')">▶</div>
-            <div></div><div class="btn" ontouchstart="move('down')">▼</div><div></div>
+<div id="console">
+    <div id="viewport">
+        <div id="player">👤</div>
         </div>
-        <div style="display: flex; gap: 20px;">
-            <div class="btn round">B</div>
-            <div class="btn round">A</div>
+
+    <div id="controls">
+        <div class="dpad">
+            <div></div><div class="btn" onclick="move(0,-1)">▲</div><div></div>
+            <div class="btn" onclick="move(-1,0)">◀</div><div style="background:#444"></div><div class="btn" onclick="move(1,0)">▶</div>
+            <div></div><div class="btn" onclick="move(0,1)">▼</div><div></div>
+        </div>
+        <div style="display:flex; gap:15px;">
+            <div class="btn circle-btn">B</div>
+            <div class="btn circle-btn">A</div>
         </div>
     </div>
+</div>
 
-    <script src="town1map.js"></script>
+<script src="town1map.js"></script>
 
-    <script>
-        let pos = { x: 4, y: 0 }; // Starting position (The Path)
-        const sprite = document.getElementById('player-sprite');
-        const tileSize = 20; // Size of one grid square on screen
+<script>
+    // THE ENGINE LOGIC
+    let pX = 4, pY = 0; // Starting at 'Start'
+    const viewport = document.getElementById('viewport');
+    const hero = document.getElementById('player');
 
-        function updateSprite() {
-            sprite.style.left = (pos.x * tileSize) + 'px';
-            sprite.style.top = (pos.y * tileSize) + 'px';
+    function buildWorld() {
+        // This looks at town1Data from your town1map.js file
+        town1Data.forEach(row => {
+            row.forEach(type => {
+                const tile = document.createElement('div');
+                tile.className = 'tile';
+                if(type === 1) tile.classList.add('wall');
+                if(type === 0) tile.classList.add('path');
+                if(type === 3) tile.classList.add('house');
+                if(type === 6) tile.classList.add('heal');
+                if(type === 7) tile.classList.add('goon');
+                viewport.appendChild(tile);
+            });
+        });
+    }
+
+    function move(dx, dy) {
+        let nX = pX + dx, nY = pY + dy;
+        // Collision logic: Don't walk through walls (1)
+        if(town1Data[nY] && town1Data[nY][nX] !== 1) {
+            pX = nX; pY = nY;
+            hero.style.left = (pX * 6.25) + "%";
+            hero.style.top = (pY * 6.25) + "%";
+            
+            // Goon Battle Logic
+            if(town1Data[pY][pX] === 7) alert("SULTAN! A Goon blocks your path!");
         }
+    }
 
-        function move(dir) {
-            let nextX = pos.x;
-            let nextY = pos.y;
-
-            if (dir === 'up') nextY--;
-            if (dir === 'down') nextY++;
-            if (dir === 'left') nextX--;
-            if (dir === 'right') nextX++;
-
-            // CHECK COLLISION WITH MAP DATA
-            // If the map says '1', we don't move.
-            if (town1Data[nextY] && town1Data[nextY][nextX] !== 1) {
-                pos.x = nextX;
-                pos.y = nextY;
-                
-                // CHECK TRIGGER TILES
-                let tile = town1Data[pos.y][pos.x];
-                if (tile === 7) alert("Goon Battle Start!");
-                if (tile === 6) alert("You feel refreshed! (HP Restored)");
-            }
-            updateSprite();
-        }
-
-        // Initial Draw
-        updateSprite();
-    </script>
+    window.onload = buildWorld;
+</script>
 </body>
 </html>
